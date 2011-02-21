@@ -7,3 +7,6 @@
 [submodule "deps/node-paperboy"]
 	path = deps/node-paperboy
 	url = git://github.com/pilif/node-paperboy.git
+[submodule "deps/node_redis"]
+	path = deps/node_redis
+	url = https://github.com/mranney/node_redis.git
