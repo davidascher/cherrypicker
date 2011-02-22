@@ -18,8 +18,8 @@ var launch = function(){
           sys.error("Failed to write PID file ("+ config.general.pidFile+"): " + err);
           process.exit(1);
       }
-      require('tempalias_http');
-      require('tempalias_smtp');
+      require('cherrypick_http');
+      require('cherrypick_smtp');
   });
 };
 
