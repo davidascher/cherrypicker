@@ -1,7 +1,7 @@
 require.paths.unshift('lib');
 require.paths.unshift('./deps/node-paperboy/lib');
-require.paths.unshift('./deps/redis-node-client/lib');
 require.paths.unshift('./deps/node-smtp/lib');
+require.paths.unshift('./deps');
 
 var config = require('config');
 var fs = require('fs');
@@ -25,11 +25,11 @@ var launch = function(){
 
 try{
     var pd = fs.statSync(config.general.pidFile);
-}catch(e){
+} catch(e) {
   pd = null;
 }
 
-if (pd && pd.isFile()){
+if (pd && pd.isFile()) {
   sys.puts('PID file found. Attempting to kill previous instance if running');
   fs.readFile(config.general.pidFile, function(err, pid){
     if (!err){
@@ -39,7 +39,7 @@ if (pd && pd.isFile()){
     }
     launch();
   });
-}else{
+} else {
   launch();
 }
 

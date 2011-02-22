@@ -2,7 +2,6 @@
   (function($){
     $(function(){
       var inputs = $('#gf input[type=text]');
-      Tempalias.setSpy();
       inputs.focus(function(){
           this.select();
       });
@@ -24,29 +23,23 @@
       inputs[0].focus();
     });
   }(jQuery));
-  if (pageTracker)
-    pageTracker._trackPageview("/form");
 </script>
-<p id="intro">Generate an anonymous alias that will forward to your real email
-  address. It will automatically be deleted after either your set time
-  or message limit has been reached.
-  <span class="sidenote">(<a href="#!/about">What is this good for?</a>)</span></p>
+<p id="intro">Tell us your email address, pick a new alias@david.raindrop.it, and
+we'll forward real mail to your regular email address, but present the bacn in
+a much nicer way.</p>
 
 <div id="generate-form">
   <form id="gf" action="#/buildalias" method="post">
     <table>
+      <tr id="username_selection">
+        <th>What username do you want:</th>
+        <td><input type="text" name="username" id="username" value="" />@david.raindrop.it</td>
+      </tr>
       <tr id="target_selection">
-        <th>Your real email:</th>
+        <th>What is your real email:</th>
         <td><input type="text" name="target" id="target" value="<%= e(preset.target) %>" /></td>
       </tr>
-      <tr id="validity_selection">
-        <th>Alias valid for:</th>
-        <td>
-          <input type="text" name="days" id="days" value="<%= e(preset.days) %>" /> day(s) or
-          <input type="text" name="max-usage" id="max-usage" value="<%= e(preset['max-usage']) %>" /> received messages
-        </td>
-      </tr>
     </table>
-    <p id="error">Provide a target and time or usage</p><button type="submit">Generate Alias</button>
+    <p id="error">Provide a target and username</p><button type="submit">Setup forward</button>
   </form>
 </div>

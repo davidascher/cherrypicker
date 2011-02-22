@@ -1,16 +1,9 @@
-Tempalias = {};
+Cherrypicker = {};
 
 (function($) {
-  Tempalias.setSpy = function(spy){
-    var margCorr = 0;
-
-    spy = spy || 'default';
-    $('#spy')[0].className = spy;
-  };
-
   // please excuse the really bad pun, but I just. could. not. resist.
-  Tempalias.bakery = {};
-  Tempalias.bakery = (function(){
+  Cherrypicker.bakery = {};
+  Cherrypicker.bakery = (function(){
     return {
       bakeCookie: function(name, value, days){
         var expires = "";
@@ -32,10 +25,11 @@ Tempalias = {};
         return null;
       },
       eatCookie: function(name) {
-	      Tempalias.bakery.bakeCookie(name,"",-1);
-}     }
+            Cherrypicker.bakery.bakeCookie(name,"",-1);
+      }
+    }
   }());
-  Tempalias.app = $.sammy((function(){
+  Cherrypicker.app = $.sammy((function(){
     return function(){
       this.helpers({
         e: function(t){
@@ -51,7 +45,7 @@ Tempalias = {};
       this.template_engine = 'Sammy.Template';
 
       this.get('#/', function(context){
-        var preset = Tempalias.bakery.fetchCookie('preset');
+        var preset = Cherrypicker.bakery.fetchCookie('preset');
         if (preset){
           preset = JSON.parse(preset);
         }else{
@@ -60,6 +54,19 @@ Tempalias = {};
         this.partial('templates/form.template', {preset: preset});
         this.app.last_location = null;
       });
+
+      this.get('#!/success', function(context){
+        var auth = unescape(Cherrypicker.bakery.fetchCookie('auth'));
+        console.log(auth);
+        if (auth){
+          auth = JSON.parse(auth);
+        }else{
+          auth = {};
+        }
+        this.partial('templates/success.template', {auth: auth});
+        this.app.last_location = null;
+      });
+
 
       this.get('#!/form', function(context){
         this.app.last_location = null;
@@ -89,28 +96,25 @@ Tempalias = {};
         var vale = function(e){
           return e.match(/^[^@]+@[^.@]+\.[^@.][^@]+$/) ? e : '';
         };
+        var valt = function(e){
+          return e;
+        };
         var alias = {
           target: vale($('#target').val()),
-          days:  valn($('#days').val()),
-          "max-usage": valn($('#max-usage').val())
+          username:  valt($('#username').val()),
         };
 
-        // limit to sane defaults. we are TEMPalias. not
-        // unlimited free alias :p
-        if (alias['max-usage']) alias['max-usage'] = Math.min(100, alias['max-usage']);
-        if (alias['days']) alias['days'] = Math.min(60, alias['days']);
-
-        if (!alias.target || (!alias.days && !alias['max-usage'])){
+        if (!alias.target || !alias.username){
           var e = $('#error');
           e.show();
           setTimeout(function(){e.fadeOut('slow');}, 1000);
           return;
         }
         var aliasString = JSON.stringify(alias);
-        Tempalias.bakery.bakeCookie('preset', aliasString, 60);
+        Cherrypicker.bakery.bakeCookie('preset', aliasString, 60);
 
         $.ajax({
-          url: '/aliases',
+          url: '/submit_request',
           type: 'POST',
           dataType: 'json',
           processData: false,
@@ -130,6 +134,6 @@ Tempalias = {};
     };
   })());
   $(function() {
-    Tempalias.app.run('#/');
+    Cherrypicker.app.run('#/');
   });
 })(jQuery);

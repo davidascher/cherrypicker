@@ -13,7 +13,7 @@ a:link, a:hover, a:active, a:visited{
 
 body {
     height: 100%;
-    background: #f0f0f0 url('../images/bgc.png') bottom  repeat-x;
+    /*background: #f0f0f0 url('../images/bgc.png') bottom  repeat-x;*/
     background-attachment: fixed;
     margin: 0 0 0 -98px;
     padding: 0;
@@ -22,24 +22,6 @@ body {
     line-height: 22px;
     color: #353535;
 }
-
-#spy{
-  padding-bottom: 32px;
-  padding-left: 98px;
-}
-
-#spy.default{
-  background: transparent url('../images/spy_default.png') left bottom  no-repeat;
-}
-
-#spy.happy{
-  background: transparent url('../images/spy_happy.png') left bottom  no-repeat;
-}
-
-#spy.secretive{
-  background: transparent url('../images/spy_secretive.png') left bottom  no-repeat;
-}
-
 
 #page-container{
   margin: 40px auto 0 auto;
@@ -64,7 +46,6 @@ body {
 #page h1{
   color: white;
   height: 62px;
-  background: #fff url('../images/logo.png') no-repeat;
   text-indent: -999px;
   margin: 0 0 20px 0;
 }

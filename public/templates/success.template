@@ -1,0 +1,7 @@
+<script type="text/javascript">
+</script>
+<div>logged in as: <em><%= auth.username %></em></div>
+<h2>Success!</h2>
+<p>your forwarding setup has been validated.  You can now sign up for
+websites and use <%= auth.username %> to forward emails to your <%= auth.target %> email address.
+</p>
