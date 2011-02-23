@@ -13,25 +13,25 @@ process.addListener('uncaughtException', function (err) {
 });
 
 var launch = function(){
-  fs.writeFile(config.general.pidFile, ""+process.pid, function(err, data){
+  fs.writeFile(config.general.http_pidFile, ""+process.pid, function(err, data){
       if (err){
-          sys.error("Failed to write PID file ("+ config.general.pidFile+"): " + err);
+          sys.error("Failed to write PID file ("+ config.general.http_pidFile+"): " + err);
           process.exit(1);
       }
       require('cherrypick_http');
-      require('cherrypick_smtp');
+      //require('cherrypick_smtp');
   });
 };
 
 try{
-    var pd = fs.statSync(config.general.pidFile);
+    var pd = fs.statSync(config.general.http_pidFile);
 } catch(e) {
   pd = null;
 }
 
 if (pd && pd.isFile()) {
   sys.puts('PID file found. Attempting to kill previous instance if running');
-  fs.readFile(config.general.pidFile, function(err, pid){
+  fs.readFile(config.general.http_pidFile, function(err, pid){
     if (!err){
       try{
         process.kill(parseInt(pid, 10), 'SIGTERM');
