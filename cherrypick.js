@@ -29,17 +29,17 @@ try{
   pd = null;
 }
 
-if (pd && pd.isFile()) {
-  sys.puts('PID file found. Attempting to kill previous instance if running');
-  fs.readFile(config.general.http_pidFile, function(err, pid){
-    if (!err){
-      try{
-        process.kill(parseInt(pid, 10), 'SIGTERM');
-      }catch(e){}
-    }
-    launch();
-  });
-} else {
-  launch();
-}
+//if (pd && pd.isFile()) {
+//  sys.puts('PID file found. Attempting to kill previous instance if running');
+//  fs.readFile(config.general.http_pidFile, function(err, pid){
+//    if (!err){
+//      try{
+//        process.kill(parseInt(pid, 10), 'SIGTERM');
+//      }catch(e){}
+//    }
+//    launch();
+//  });
+//} else {
+launch();
+//}
 

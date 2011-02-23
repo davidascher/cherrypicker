@@ -7,6 +7,7 @@ import errno
 import getopt
 import time
 import email
+import json
 import socket
 import asyncore
 
@@ -62,6 +63,34 @@ class Cherrypicker(smtpd.PureProxy):
                                 print >> DEBUGSTREAM, "From now on we keep emails from " + domain + " intended for " + mailfrom
                                 redis.set('knownsender:' + domain + ':' + mailfrom, 'true')
 
+    def store_message(self, mailfrom, target, rcpttos, data):
+        msg = email.message_from_string(data)
+        headers = {
+            'From': msg.get('From'),
+            'To': msg.get('To'),
+            'Subject': msg.get('Subject'),
+            'Date': time.ctime(time.time())
+        }
+        parts = []
+        for part in msg.walk():
+            if part.get_content_type() == 'text/plain':
+                parts.append(part.get_payload())
+        simple_msg = {'headers': headers, 'text_parts': parts}
+        simple_msg_json = json.dumps(simple_msg)
+        timestamp = time.time()
+        
+        msgid = redis.get('msgid_counter')
+        if msgid:
+            msgid = redis.incr('msgid_counter')
+        else:
+            redis.set('msgid_counter', 1)
+            msgid = 1
+        
+        msgkey = 'message:'+str(msgid)
+        redis.set(msgkey, simple_msg_json) # storing the msg once
+        redis.zadd('messages:'+target, msgkey, timestamp) # all messages to me
+        redis.zadd('messages_from:'+target+':'+mailfrom, msgkey, timestamp) # all messages from you to me
+
     def process_message(self, peer, mailfrom, rcpttos, data):
         # first, figure out if this is a sample we should use to populate the
         # known senders list
@@ -108,7 +137,7 @@ class Cherrypicker(smtpd.PureProxy):
           return
 
         # is this an email we can deal with here, or do we forward it?
-        action = "forward"
+        action = "store" # for now, we always store, for testing. # "forward"
         
         domain = domain_from_address(mailfrom)
         print "domain", domain, "target", target
@@ -121,7 +150,8 @@ class Cherrypicker(smtpd.PureProxy):
             if refused:
               print >> DEBUGSTREAM, 'we got some refusals:', refused
         elif action == 'store':
-            refused = self._deliver(mailfrom, new_rcpttos, data + '\n\nNEXTTIMEOWONT')
+            refused = self._deliver(mailfrom, new_rcpttos, data)
+            self.store_message(mailfrom, target, new_rcpttos, data)
             print >> DEBUGSTREAM, 'we really should store this message!!!!!!!!!!!!!'
 
 print host, port, smarthost, smarthostPort

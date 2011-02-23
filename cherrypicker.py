@@ -35,7 +35,7 @@ def start():
   print "starting cherrypicker_smtp.py"
   subprocess.Popen(["/usr/bin/python", "cherrypick_smtp.py"])
   print "starting cherrypick.js"
-  subprocess.Popen(["/home/davida/local/bin/node", "./cherrypick.js"])
+  subprocess.Popen(["/home/davida/local/bin/node", "./cherrypick.js &"])
 
 if sys.argv[1] == "stop":
   stop()
