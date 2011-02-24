@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Wmsy Simple Messages Example</title>
+    <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js"></script>
+    <script type="text/javascript">
+      var console;
+      if (!console)
+        console = {
+          log: function() {},
+          error: function() {},
+          info: function() {},
+          warn: function() {},
+      };
+      function dump(aMsgWithNewline) {
+        console.log(aMsgWithNewline.replace("\n", "", "g"));
+      }
+    </script>
+    <script type="text/javascript" src="requirejs/require.js"></script>
+    <script>
+      require(
+        {
+          paths: {
+            "requirejs": "requirejs/build/convert/commonjs",
+            "wmsy": "wmsy/lib/wmsy",
+            "ui": "ui"
+          },
+        },
+        ["requirejs/global-es5", "ui/recent"],
+        function(es5, mainModule) {
+          mainModule.main("wmsy/data/examples/simple/", document);
+        }
+      );
+    </script>
+  </head>
+<body>
+  <div id="error"></div>
+  <div id="content" style="display: inline-block;">
+  </div>
+</body>
+</html>

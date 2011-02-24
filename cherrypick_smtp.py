@@ -10,7 +10,8 @@ import email
 import json
 import socket
 import asyncore
-
+from lxml import etree
+from lxml.html import clean, fromstring, tostring
 
 
 redis = redis.Redis()
@@ -40,6 +41,30 @@ def domain_from_address(address):
 
 class Cherrypicker(smtpd.PureProxy):
     
+    def clean_html(self, html):
+        remove_attrs = ['class']
+        remove_tags = ['table', 'tr', 'td', 'html', 'body']
+        nonempty_tags = ['a', 'p', 'span', 'div']
+        
+        cleaner = clean.Cleaner(remove_tags=remove_tags)
+
+        clean_html = cleaner.clean_html(html)
+        # now remove the useless empty tags
+        root = fromstring(clean_html)
+        context = etree.iterwalk(root) # just the end tag event
+        for action, elem in context:
+            clean_text = elem.text and elem.text.strip(' \t\r\n')
+            if elem.tag in nonempty_tags and \
+            not (len(elem) or clean_text): # no children nor text
+                elem.getparent().remove(elem)
+                continue
+            elem.text = clean_text # if you want
+            # and if you also wanna remove some attrs:
+            for badattr in remove_attrs:
+                if elem.attrib.has_key(badattr):
+                    del elem.attrib[badattr]
+        return tostring(root)
+
     def addSenderBasedOnMessage(self, peer, mailfrom, rcpttos, data):
         # we'll see if it's a message _from_ someone we're forwarding mail for
         print >> DEBUGSTREAM, "mail from:", '*'+mailfrom+'*'
@@ -71,11 +96,14 @@ class Cherrypicker(smtpd.PureProxy):
             'Subject': msg.get('Subject'),
             'Date': time.ctime(time.time())
         }
-        parts = []
+        text_parts = []
+        html_parts = []
         for part in msg.walk():
             if part.get_content_type() == 'text/plain':
-                parts.append(part.get_payload())
-        simple_msg = {'headers': headers, 'text_parts': parts}
+                text_parts.append(part.get_payload())
+            elif part.get_content_type() == 'text/html':
+                html_parts.append(self.clean_html(part.get_payload()))
+        simple_msg = {'headers': headers, 'text_parts': text_parts, 'html_parts': html_parts}
         simple_msg_json = json.dumps(simple_msg)
         timestamp = time.time()
         
