@@ -4,6 +4,7 @@ import sys
 import os
 import errno
 import getopt
+import uuid
 import time
 from ConfigParser import ConfigParser
 import email
@@ -103,6 +104,8 @@ def store_message(mailfrom, target, rcpttos, msg):
         'receivedDate': msg.get('Date'),
         'subject': msg.get('Subject')
     }
+    if not blob['mid']:
+        blob['mid'] = str(uuid.uuid1())
     _from_name, _from_email = email.Utils.parseaddr(msg.get('From'))
     blob['from'] = {
         'name': _from_name,
@@ -139,7 +142,6 @@ def store_message(mailfrom, target, rcpttos, msg):
         db.set('msgid_counter', 1)
         msgid = 1
         
-    #print >> DEBUGSTREAM, simple_msg
     
     msgkey = 'message:'+str(msgid)
     print >> DEBUGSTREAM, "added message: ", msgid
@@ -147,7 +149,34 @@ def store_message(mailfrom, target, rcpttos, msg):
     db.zadd('messages:'+target, msgkey, timestamp) # all messages to me
     db.zadd('messages_from:'+target+':'+mailfrom, msgkey, timestamp) # all messages from you to me
     
-    
+    # conversation grouping, yee-ha.
+    # find all msgid's referenced in msg
+    references = [ref.strip() for ref in msg.get('References', '').split('\n')]
+    inreplyto = msg.get('In-Reply-To', None)
+    if inreplyto and inreplyto not in references: references.append(inreplyto)
+    convId = None
+    for ref in references:
+        print >>DEBUGSTREAM, "looking for convId for: ", ref
+        ref2convkey = 'msgInConv:'+ref
+        if db.exists(ref2convkey):
+            convId = db.get(ref2convkey)
+            print >>DEBUGSTREAM, "FOUND A CONVERSATION OMG!", convId
+            break
+    if convId is None:
+        # need to make a new id
+        convId = db.get('convid_counter')
+        if convId:
+            convId = db.incr('convid_counter')
+        else:
+            db.set('convid_counter', 1)
+            convId = 1
+    convId = str(convId)
+    msg2convkey = 'msgInConv:'+blob['mid']
+    db.set(msg2convkey, convId)
+    # update the timestamp of that conversation
+    db.zadd('conversations:'+target, convId, timestamp)
+    db.set('msgid2msgkey:'+blob['mid'], msgkey)
+    db.sadd('conversation:'+convId, msgkey)
 
 def _deliver(_from, _tos, data):
     import smtplib
@@ -235,11 +264,19 @@ def process_message(data, sender, recipients, forward=True):
 
 def rebuild():
     # first, get rid of all keys that we create
-    msgkeys = db.keys('message*')
-    print >>DEBUGSTREAM, "deleting keys", msgkeys
-    if msgkeys:
-        db.delete(*msgkeys)
+    keys = db.keys('message*')  # message:*, messages:*, messages_from:*
+    if keys:
+        db.delete(*keys)
     db.delete('msgid_counter')
+
+    keys = db.keys('msgInConv:*')
+    if keys:
+        db.delete(*keys)
+    keys = db.keys('conversations:*')
+    if keys:
+        db.delete(*keys)
+    db.delete('convid_counter')
+
     # then find all of the files in the backup dir, and process them each in turn
     files = [int(f) for f in os.listdir(BACKUPDIR) if f != 'counter']
     files.sort()
@@ -272,5 +309,5 @@ except Exception, e:
     import traceback
     traceback.print_exc(file=DEBUGSTREAM)
     log = traceback.format_exc()
-    _deliver('process.py@david.raindrop.it', 'dascher@mozilla.com', log)
+    _deliver('process.py@david.raindrop.it', 'test@ascher.ca', log)
     raise

@@ -15,6 +15,7 @@ var config = require('config');
 var paperboy = require('paperboy');
 var express = require('express');
 var smtp = require('smtp');
+var async = require('async');
 
 function sendToken(target, uid) {
   var client = new smtp.Client();
@@ -51,6 +52,30 @@ function api(app) {
     var body = JSON.stringify(resp);
     res.send(body, code);
   };
+
+  app.get('/recent_convos/:email', function(req, res, next) {
+    var email = req.params.email
+    var convos = [];
+    redis.zrange('conversations:'+email, 0, -1, function(err, conversations) {
+      async.map(conversations, function(conversation, callback) {
+        redis.smembers('conversation:'+conversation, function(err, messages) {
+          callback(null, messages)
+        });
+      }, function(err, message_lists) {
+        async.map(message_lists, function(message_list, callback) {
+          redis.mget(message_list, function(err, response) {
+            async.map(response, function(resp, callback) {
+              callback(null, JSON.parse(resp))
+            }, function(err, results) {
+              callback(null, results);
+            });
+          });
+        }, function(err, convos) {
+          res.send(JSON.stringify(convos), {'Content-Type': 'application/json' });
+        });
+      });
+    });
+  });
 
   app.get('/recent_messages/:email', function(req, res, next) {
     var email = req.params.email
