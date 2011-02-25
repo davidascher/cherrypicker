@@ -13,26 +13,36 @@ import asyncore
 from lxml import etree
 from lxml.html import clean, fromstring, tostring
 import redis
+import argparse
 
-data = sys.stdin.read()
 db = redis.Redis()
+
+parser = argparse.ArgumentParser(description='Process an email from postfix, dump into cherry db')
+parser.add_argument('-r', '--rebuild', action='store_true')
+parser.add_argument('--sender')
+parser.add_argument('--extension')
+parser.add_argument('--user')
+parser.add_argument('--recipient')
+parser.add_argument('--domain')
+
 
 config = ConfigParser()
 config.read('config.ini')
 DEBUGSTREAM = open('/home/davida/t.log', 'a')
 NEWLINE = '\n'
+BACKUPDIR = '/home/davida/backups'
 
 
-def backup(data):
-    backupdir = '/home/davida/backups'
-    if not os.path.exists(backupdir):
-        os.mkdir(backupdir)
-    counter = os.path.join(backupdir, 'counter')
+def backup(data, args):
+    if not os.path.exists(BACKUPDIR):
+        os.mkdir(BACKUPDIR)
+    counter = os.path.join(BACKUPDIR, 'counter')
     if not os.path.exists(counter):
         open(counter,'w').write('0')
     id = str(int(open(counter).read())+1)
     open(counter, 'w').write(id)
-    open(os.path.join(backupdir, id), 'w').write(data)
+    store = ' '.join(args) + '\n' + data
+    open(os.path.join(BACKUPDIR, id), 'w').write(store)
 
 
 def domain_from_address(address):
@@ -103,19 +113,20 @@ def store_message(mailfrom, target, rcpttos, msg):
         'name': _replyto_name,
         'email': _replyto_email
     }
-    blob['to'] = [{'name': _to[0], 'email': _to[1]} for _to in [email.Utils.parseaddr(_t) for _t in msg.get_all('To')]]
+    blob['to'] = [{'name': _to[0], 'email': _to[1]} for _to in [email.Utils.parseaddr(_t) for _t in msg.get_all('To', [])]]
     blob['cc'] = [{'name': _to[0], 'email': _to[1]} for _to in [email.Utils.parseaddr(_t) for _t in msg.get_all('Cc', [])]]
     blob['flags'] = {}
 
     text_parts = []
     html_parts = []
     for part in msg.walk():
-        if part.get_content_type() == 'text/plain':
+        if part.get_content_type() == 'text/html':
+            #html_parts.append(clean_html(part.get_payload()))
+            html_parts.append(part.get_payload())
+            body = part.get_payload()
+        elif part.get_content_type() == 'text/plain':
             text_parts.append(part.get_payload())
             body = part.get_payload()
-        elif part.get_content_type() == 'text/html':
-            html_parts.append(clean_html(part.get_payload()))
-            body = clean_html(part.get_payload())
     blob['body'] = body
     #simple_msg = {'headers': headers, 'text_parts': text_parts, 'html_parts': html_parts}
     simple_msg_json = json.dumps(blob)
@@ -162,22 +173,22 @@ def _deliver(_from, _tos, data):
             refused[r] = (errcode, errmsg)
     return refused
 
-def process_message(msg):
-    _from = email.Utils.parseaddr(msg.get('From'))[1]
-    _tos = [email.Utils.parseaddr(_to)[1] for _to in msg.get_all('To')]
-    _ccs = [email.Utils.parseaddr(_cc)[1] for _cc in msg.get_all('Cc', [])]
+def process_message(msg, sender, recipients, forward=True):
+    print >>DEBUGSTREAM, "processing message from", sender, "to", recipients
+    _from = sender # email.Utils.parseaddr(msg.get('From'))[1]
+    _recipients = [email.Utils.parseaddr(_to)[1] for _to in recipients.split(',')]
 
     # first, figure out if this is a sample we should use to populate the
     # known senders list
-    if _tos[0][1] == 'addthis':
-        addSenderBasedOnMessage(_from, _tos, data)
+    if _recipients[0][1] == 'addthis':
+        addSenderBasedOnMessage(_from, _recipients, data)
         return
     
     # look up rcpttos in our redis db, and swap them if we have them in
     # our db.
     acceptable = False
     new_tos = []
-    for _to in _tos:
+    for _to in _recipients:
         print >>DEBUGSTREAM, "TO is", _to
         username, domain = _to.split('@', 1)
         new_to = _to
@@ -198,29 +209,55 @@ def process_message(msg):
     action = "store" # for now, we always store, for testing. # "forward"
     
     domain = _from[1]
-    print "domain", domain, "target", target
+    print >> DEBUGSTREAM, "domain", domain, "target", target
     if db.exists('knownsender:' + domain + ':' + target):
         action = 'store'
 
-    if action == 'forward':
-        refused = _deliver(_from, _tos, data)
+    if action == 'forward' and forward:
+        print >>DEBUGSTREAM, "just forwarding"
+        refused = _deliver(_from, _recipients, data)
         # TBD: what to do with refused addresses?
         if refused:
           print >> DEBUGSTREAM, 'we got some refusals:', refused
     elif action == 'store':
-        refused = _deliver(_from, new_tos, data)
+        if forward:
+            print >>DEBUGSTREAM, "forwarding, and... ",
+            refused = _deliver(_from, new_tos, msg)
+        print >> DEBUGSTREAM, 'storing the message'
         store_message(_from, target, new_tos, msg)
-        print >> DEBUGSTREAM, 'we really should store this message!!!!!!!!!!!!!'
+
+def rebuild():
+    # first, get rid of all keys that we create
+    msgkeys = db.keys('message*')
+    db.delete(msgkeys)
+    
+    # then find all of the files in the backup dir, and process them each in turn
+    files = [int(f) for f in os.listdir(BACKUPDIR) if f != 'counter']
+    files.sort()
+    for f in files:
+        data = open(os.path.join(BACKUPDIR, str(f))).read()
+        argline, rest = data.split('\n', 1)
+        args = parser.parse_args(argline.split())
+        msg = email.message_from_string(rest)
+        process_message(msg, args.sender, args.recipient, forward=False)
 
 try:
-    backup(data)
-
+    args = parser.parse_args(sys.argv[1:])
     host = config.get('smtp', 'bannerHostname')
     port = config.getint('smtp', 'port')
     smarthost = config.get('smtp', 'smarthost')
     smarthostPort = config.getint('smtp', 'smarthostPort')
-    msg = email.message_from_string(data)
-    process_message(msg)
+    
+    if args.rebuild:
+        rebuild()
+    else:
+        data = sys.stdin.read()
+        backup(data, sys.argv[1:])
+    
+        msg = email.message_from_string(data)
+        args = parser.parse_args(sys.argv[1:])
+        
+        process_message(msg, args.sender, args.recipient)
     
 except Exception, e:
     print >>DEBUGSTREAM, e

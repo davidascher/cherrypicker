@@ -1,11 +1,14 @@
-* rename tempalias everywhere
-* remove junk files (bookmarklets, etc.)
+
+- script to clean out message & related keys, and reprocess all messages in backup dir.
+- figure out how to use redis to do conversation mapping
+
+- /recent_correspondents
+- /recent_conversations
+- /conversation/:id
+
 
 
 LATER:
+* remove junk files (bookmarklets, etc.)
 * check that username is available as form being filled in (or at least on submission)
 
-* if mail is not from site we understand, FORWARD
-* if mail is from site we understand, look up per-user/per-sender rules: indicating forward, store, store&forward, or discard
-* if forward, FORWARD
-* if store, dump in separate queue?

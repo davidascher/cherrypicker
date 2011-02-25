@@ -66,6 +66,11 @@ function EmailMessage(aFrom, aTo, aSubject, aBody) {
   this.to = aTo;
   this.subject = aSubject;
   this.body = aBody;
+  console.log("created emailMessage");
+  if (aBody.indexOf('<a') != -1) {
+    console.log("GOT an HTML Message!");
+    this.bodyType = 'html';
+  }
 }
 EmailMessage.prototype = {
   messageType: "rfc822",
@@ -95,22 +100,6 @@ function getId(blob) {
   idMap[email] = id;
   return id;
 }
-
-//
-//var alice = new Identity("Alice", "alice@example.com", true);
-//var bob = new Identity("Bob", "bob@example.com", false);
-//var chuck = new Identity("Charles Carmichael", "chuck@example.com", false);
-//var userIdentity = new Identity("You!", "you@example.com", true);
-//
-//var messages = [
-//  new EmailMessage(bob, [alice, chuck], "What's the word?",
-//                   "My dear compatriots, how are you doing? \
-//I write you from outer space. \
-//It is nice here."),
-//  new Tweet(bob, "I just sent an email!"),
-//  // for the directed, we're pretending we processed a "@bob" and removed it
-//  new Tweet(alice, "yes, yes you did.", bob),
-//];
 
 /**
  * General identity representation.
@@ -161,28 +150,65 @@ wy.defineWidget({
       toLabel: "to: ",
       to: wy.widgetFlow({type: "identity"}, "to", {separator: ", "}),
     }),
-    bodyBlock: {
-      body: wy.bind("body")
-    }
+    bodyBlock: wy.subWidget({
+      type: "body"
+    }),
   },
   style: {
     root: ".message(#729fcf);",
     subject: [
       "font-weight: bold;"
     ],
-    bodyBlock: [
+  },
+});
+
+wy.defineWidget({
+  name: "message-body",
+  constraint: {
+    type: "body"
+  },
+  'class': 'ORANGEPEEL',
+  structure: {
+    body: wy.bind("body")
+  },
+  style: {
+    root: [
       "margin: 2px;",
       "padding: 2px;",
       "border-radius: 2px;",
       "background-color: #ffffff;",
-      "max-height: 10em;",
-      "overflow: hidden;",
-    ],
-    body: "white-space: pre-wrap;",
+      "white-space: pre-wrap;"
+      ]
+  },
+})
+
+
+/**
+ * HTML-specialized body
+ */
+
+wy.defineWidget({
+  name: "message-body-html",
+  constraint: {
+    type: "body",
+    obj: {
+      bodyType: "html"
+    }
+  },
+  structure: {
+  },
+  style: {
+    root: [
+      "margin: 2px;",
+      "padding: 2px;",
+      "border-radius: 2px;",
+      "background-color: #ffffff;",
+      "white-space: normal;"
+      ]
   },
   impl: {
     postInitUpdate: function() {
-      this.body_element.innerHTML = this.body_element.textContent;
+      this.domNode.innerHTML = this.obj.body;
     }
   }
 });
@@ -236,7 +262,7 @@ wy.defineWidget({
   },
   style: {
     contents: [
-      "width: 20em;",
+      "width: 40em;",
     ],
   }
 });
@@ -276,7 +302,8 @@ exports.main = function main(baseRelPath, doc) {
     success: function(data) {
       try {
         console.log('data', data)
-        for (var i=0; i < data.length; i++) {
+        var count = 0;
+        for (var i=data.length-1; count < 10 && i > -1; i--) {
           var msg = data[i];
           console.log(msg);
           
