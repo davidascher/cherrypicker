@@ -146,6 +146,8 @@ def store_message(mailfrom, target, rcpttos, msg):
     db.set(msgkey, simple_msg_json) # storing the msg once
     db.zadd('messages:'+target, msgkey, timestamp) # all messages to me
     db.zadd('messages_from:'+target+':'+mailfrom, msgkey, timestamp) # all messages from you to me
+    
+    
 
 def _deliver(_from, _tos, data):
     import smtplib
@@ -173,7 +175,8 @@ def _deliver(_from, _tos, data):
             refused[r] = (errcode, errmsg)
     return refused
 
-def process_message(msg, sender, recipients, forward=True):
+def process_message(data, sender, recipients, forward=True):
+    msg = email.message_from_string(data)
     print >>DEBUGSTREAM, "processing message from", sender, "to", recipients
     _from = sender # email.Utils.parseaddr(msg.get('From'))[1]
     _recipients = [email.Utils.parseaddr(_to)[1] for _to in recipients.split(',')]
@@ -181,7 +184,7 @@ def process_message(msg, sender, recipients, forward=True):
     # first, figure out if this is a sample we should use to populate the
     # known senders list
     if _recipients[0][1] == 'addthis':
-        addSenderBasedOnMessage(_from, _recipients, data)
+        addSenderBasedOnMessage(_from, _recipients, msg)
         return
     
     # look up rcpttos in our redis db, and swap them if we have them in
@@ -215,31 +218,37 @@ def process_message(msg, sender, recipients, forward=True):
 
     if action == 'forward' and forward:
         print >>DEBUGSTREAM, "just forwarding"
-        refused = _deliver(_from, _recipients, data)
+        refused = _deliver(_from, _recipients, msg.as_string())
         # TBD: what to do with refused addresses?
         if refused:
           print >> DEBUGSTREAM, 'we got some refusals:', refused
     elif action == 'store':
         if forward:
-            print >>DEBUGSTREAM, "forwarding, and... ",
-            refused = _deliver(_from, new_tos, msg)
+            print >>DEBUGSTREAM, "forwarding, and... "
+            #print >>DEBUGSTREAM, msg.as_string()
+            try:
+                refused = _deliver(_from, new_tos, msg.as_string())
+            except TypeError, e:
+                print >> DEBUGSTREAM, "TYPEERROR data was: " + msg.as_string()
         print >> DEBUGSTREAM, 'storing the message'
         store_message(_from, target, new_tos, msg)
 
 def rebuild():
     # first, get rid of all keys that we create
     msgkeys = db.keys('message*')
-    db.delete(msgkeys)
-    
+    print >>DEBUGSTREAM, "deleting keys", msgkeys
+    if msgkeys:
+        db.delete(*msgkeys)
+    db.delete('msgid_counter')
     # then find all of the files in the backup dir, and process them each in turn
     files = [int(f) for f in os.listdir(BACKUPDIR) if f != 'counter']
     files.sort()
     for f in files:
-        data = open(os.path.join(BACKUPDIR, str(f))).read()
-        argline, rest = data.split('\n', 1)
+        full = open(os.path.join(BACKUPDIR, str(f))).read()
+        argline, data = full.split('\n', 1)
         args = parser.parse_args(argline.split())
-        msg = email.message_from_string(rest)
-        process_message(msg, args.sender, args.recipient, forward=False)
+        print >> DEBUGSTREAM, "adding message", argline
+        process_message(data, args.sender, args.recipient, forward=False)
 
 try:
     args = parser.parse_args(sys.argv[1:])
@@ -254,10 +263,9 @@ try:
         data = sys.stdin.read()
         backup(data, sys.argv[1:])
     
-        msg = email.message_from_string(data)
         args = parser.parse_args(sys.argv[1:])
         
-        process_message(msg, args.sender, args.recipient)
+        process_message(data, args.sender, args.recipient)
     
 except Exception, e:
     print >>DEBUGSTREAM, e

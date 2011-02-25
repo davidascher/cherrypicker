@@ -16,6 +16,10 @@ def start():
 
 def rsync():
     rsync_project('~/src/')
+
+def rebuild():
+    with cd('~/src/cherrypicker'):
+        run('python process.py --rebuild')
     
 def deploy():
     rsync()
