@@ -78,8 +78,6 @@ function api(app) {
                 var email = author['email'];
                 if (!author['name']) author['name'] = email
                 var date = new Date(Date.parse(message['receivedDate']));
-                console.log("message.date = " + message['receivedDate'])
-                console.log(date.toUTCString());
                 if (date > earliestDate)
                   earliestDate = date;
                 if (! (email in participantMap)) {
@@ -91,7 +89,6 @@ function api(app) {
               convo['participants'] = participants;
               convo['unreadCount'] = messages.length;
               convo['totalCount'] = messages.length;
-              console.log("EARLIEST DATE: ", earliestDate.toUTCString());
               convo['date'] = earliestDate.toUTCString();
               convo['star'] = false; // XXX
               convo['messages'] = messages;

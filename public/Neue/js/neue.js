@@ -6,7 +6,7 @@ $(document).ready(function($) {
     // size sections to 100% height of window
     $(window).bind("load resize", function() {
         var h = $(window).height();
-        $("#primaryNav, #conversation, #primaryNav section").css({ "height" : h });
+        //$("#primaryNav, #conversation, #primaryNav section").css({ "height" : h });
     });
     
     // size listWrap 

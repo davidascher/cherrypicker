@@ -270,12 +270,12 @@ button:active {
         margin: 0 auto;
         padding: 0 10px;
         position: relative;
-        opacity: 0;
+        /*opacity: 0;*/
         min-height: 100%;
     }
     
     body.conversationView .message {
-        opacity: 1;
+        /*opacity: 1;*/
     }
     
     .message .fullMsgHeader {

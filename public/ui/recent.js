@@ -42,8 +42,8 @@ define(
     exports
   ) {
 
-var wy = new wmsy.WmsyDomain({id: "treeaj",
-                              domain: "conversations",
+var wy = new wmsy.WmsyDomain({id: "conversation",
+                              domain: "conversation",
                               clickToFocus: true});
 
 wy.defineStyleBase("messages", [
@@ -63,18 +63,15 @@ function Conversation(participants, topic, unreadCount, totalCount, date, star, 
 };
 
 function Identity(aName, aEmail, aInAddressBook) {
-  console.log("*"+aName+"*")
   this.name = aName || aEmail;
   this.email = aEmail;
   this.inAddressBook = aInAddressBook;
 };
 
-function EmailMessage(aFrom, aTo, aSubject, aBody) {
+function EmailMessage(aFrom, aTo, aBody) {
   this.from = aFrom;
   this.to = aTo;
-  this.subject = aSubject;
   this.body = aBody;
-  console.log("created emailMessage");
   if (aBody.indexOf('<a') != -1) {
     this.bodyType = 'html';
   }
@@ -123,8 +120,8 @@ wy.defineWidget({
 });
 
 hoverStyle = [
-  //"border-bottom: 1px solid #BFD5DE;",
-  //"border-top: 1px solid #BFD5DE;",
+  "border-bottom: 1px solid #BFD5DE;",
+  "border-top: 1px solid #BFD5DE;",
   "z-index: 100;",
   "position: relative;",
   "background-image: -moz-linear-gradient(top, #EDF2F5 0%, #E6EDF0 100%);",
@@ -179,19 +176,25 @@ wy.defineWidget({
     topicBlock: wy.bind("topic"),
   },
   style: {
-    root: [
-      "background-color: #fff;",
-      "padding: 10px;",
-      "border-bottom: 1px solid #e6e6e6;",
-      "border-top: 1px solid #e6e6e6;",
-      "margin-top: -1px;",
-      "cursor: pointer;",
-      "color: #888;",
-      "background-image: -moz-linear-gradient(top, #fff 0%, #fafafa 100%);",
-      "background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #fff), color-stop(100%, #fafafa));",
-    ],
-    ":hover": hoverStyle,
-    ":selected": hoverStyle,
+    root: {
+      _: [
+          "background-color: #fff;",
+          "padding: 10px;",
+          "border-bottom: 1px solid #e6e6e6;",
+          "border-top: 1px solid #e6e6e6;",
+          "margin-top: -1px;",
+          "cursor: pointer;",
+          "color: #888;",
+          "background-image: -moz-linear-gradient(top, #fff 0%, #fafafa 100%);",
+          "background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #fff), color-stop(100%, #fafafa));",
+      ],
+      ":hover": {
+        _: hoverStyle,
+      },
+      ":focused": {
+        _: hoverStyle,
+      },
+    },
     headerBlock: [
       ".hbox();",
     ],
@@ -217,19 +220,47 @@ wy.defineWidget({
     time: "margin: 0 5px 0 0;",
   },
   impl: {
-    
     postInitUpdate: function() {
-      //console.log(this);
-      console.log(this.date_element.textContent);
-      this.date_element.textContent = $.prettyDate.format(new Date(Date.parse(this.date_element.textContent)));
+      s = this.date_element.textContent;
+      this.date_element.textContent = $.prettyDate.format(new Date(Date.parse(s)));
     }
   },
   receive: {
     focusChanged: function(aFocusedBinding, aFocusedDomain) {
-      alert('foo');
+      //console.log(aFocusedBinding, aFocusedDomain);
+      loadConversation(aFocusedBinding.obj);
     },
   }
 });
+
+            //<div class="messageBody">
+            //    <div class="messageBodyHeader hbox">
+            //        <div class="boxFlex">
+            //            <span class="from">Bryan Clark</span> 
+            //            <span class="to">to Andy Chung</span>
+            //        </div>
+            //        <div>
+            //            <span class="date">Oct 7</span>
+            //        </div>
+            //    </div>
+            //    <p>Hey Andy</p>
+            //    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec cursus consequat ante ut viverra. Integer turpis libero, fringilla at bibendum sed, elementum ut diam. Cras dignissim turpis nec lorem placerat pellentesque. Nam enim risus, suscipit id volutpat fermentum, venenatis et torto</p>
+            //    <div class="messageBodyFooter hbox">
+            //        <div class="boxFlex">
+            //            <button>reply</button>
+            //            <button>forward</button>
+            //        </div>
+            //    </div>
+            //</div>
+    //
+    //    .message .messageBody .messageBodyHeader {
+    //        padding: 25px 0 10px;
+    //    }
+    //    
+    //    .message .messageBody p {
+    //        color: #444444;
+    //        margin-bottom: 21px;
+    //    }
 
 /**
  * General message display widget.
@@ -243,11 +274,8 @@ wy.defineWidget({
   structure: {
     fromBlock: wy.flow({
       from: wy.widget({type: "identity"}, "from"),
-      saysLabel: " says ",
-      subject: wy.bind("subject"),
     }),
     toBlock: wy.flow({
-      toLabel: "to: ",
       to: wy.widgetFlow({type: "identity"}, "to", {separator: ", "}),
     }),
     bodyBlock: wy.subWidget({
@@ -255,10 +283,18 @@ wy.defineWidget({
     }),
   },
   style: {
-    root: ".message(#729fcf);",
+    root: [
+      "background-color: #FFFFFF;",
+      "border: 1px solid #DDDDDD;",
+      "border-radius: 3px 3px 3px 3px;",
+      "box-shadow: 1px 1px 0 #FFFFFF;",
+      "padding: 0 25px 25px;",
+    ],
     subject: [
       "font-weight: bold;"
     ],
+    fromBlock: "font-weight: bold;",
+    toBlock: "color: #888;",
   },
 });
 
@@ -267,7 +303,6 @@ wy.defineWidget({
   constraint: {
     type: "body"
   },
-  'class': 'ORANGEPEEL',
   structure: {
     body: wy.bind("body")
   },
@@ -309,53 +344,122 @@ wy.defineWidget({
   }
 });
 
+wy.defineStyleBase("messagelist", [
+  ".subject () {",
+"        font-size: 16px;",
+"        padding: 5px 0;",
+"        width: 100%;",
+  "}",
+]);
+
+wy.defineWidget({
+  name: "messagelist",
+  focus: wy.focus.domain.vertical("messages"),
+  constraint: {
+    type: "messagelist",
+  },
+  //<div class="title hbox">
+  //    <div class="subject overflow boxFlex">
+  //        Lunch tomorrow
+  //    </div>
+  //    <div class="tags">
+  //        <span>inbox</span>  XXX TODO
+  //    </div>
+  //    <span class="starred">&#x2605;</span>
+  //</div>
+  structure: {
+    titleBlock: {
+      subject: wy.bind("topic"),
+      tags: wy.bind("tags"),
+      starred: wy.bind(wy.NONE, {starred: "starred"}),
+    },
+    messages: wy.vertList({type: "message"}, "messages"),
+  },
+  style: {
+    title: "padding: 5px 0;",
+    subject: [
+      ".hbox();",
+      ".subject();"
+    ],
+    starred: "display: none;", // for now
+    tags: "display: none;", // for now
+  },
+})
+
 wy.defineWidget({
   name: "root",
+  focus: wy.focus.domain.vertical("conversations"),
   doc: "Root display widget; everything hangs off this.",
   constraint: {
     type: "root",
   },
+  //impl: {
+  //  __scrollingDomNode: "root",
+  //},
   structure: {
     conversations: wy.vertList({type: "conversation"}, "conversations"),
   },
 });
 
+function wrapMsg(blob) {
+  var from = getId(blob['from']);
+  var to = blob['to'].map(getId);
+  var m = new EmailMessage(
+    from,
+    to,
+    blob['body']
+  );
+  return m;
+}
+
+function loadConversation(conversation) {
+  var list = document.getElementById("messagelist");
+  list.textContent = "";
+  var emitter = wy.wrapElement(list);
+  var msgs = [];
+  var blobs = conversation['messages'];
+  for (i =0; i<blobs.length; i++) {
+    msgs.push(wrapMsg(blobs[i]));
+  }
+  var messagelistObj = {
+    messages: msgs,
+    topic: conversation.topic,
+    starred: false,
+    tags: "inbox",
+  };
+  
+  emitter.emit({type: "messagelist", obj: messagelistObj});
+
+};
+
 exports.main = function main(baseRelPath, doc) {
   // need to know where to find our star!
   wy.setPackageBaseRelPath(baseRelPath);
 
-  console.log("starting to show stuff");
   var emitter = wy.wrapElement(doc.getElementById("content"));
-
-  
-  var messages = [];
   
   $.ajax({
     url: '/recent_convos/test@ascher.ca',
     dataType: 'json',
     success: function(data) {
-      try {
-        var conversations = [];
-        for (var i=data.length-1; conversations.length < 10 && i > -1; i--) {
-          var blob = data[i];
-          
-          var convo = new Conversation(blob['participants'],
-                                       blob['topic'],
-                                       blob['unreadCount'],
-                                       blob['totalCount'],
-                                       blob['date'],
-                                       blob['star'],
-                                       blob['messages']);
-          conversations.push(convo);
-        }
-        var rootObj = {
-          conversations: conversations,
-        };
-      
-        emitter.emit({type: "root", obj: rootObj});
-      } catch (e) {
-        console.log(e);
+      var conversations = [];
+      for (var i=data.length-1; conversations.length < 30 && i > -1; i--) {
+        var blob = data[i];
+
+        var convo = new Conversation(blob['participants'],
+                                     blob['topic'],
+                                     blob['unreadCount'],
+                                     blob['totalCount'],
+                                     blob['date'],
+                                     blob['star'],
+                                     blob['messages']);
+        conversations.push(convo);
       }
+      var rootObj = {
+        conversations: conversations,
+      };
+
+      emitter.emit({type: "root", obj: rootObj});
     },
     error: function(){
       $('#output').html('error');;
