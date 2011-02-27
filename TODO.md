@@ -1,8 +1,15 @@
+- fix initial signup experience w/ 200 return code
+- figure out how to process existing email sent to the customer
+- figure out how to get responses from the customer
+- make conversation storage smarter:
+  - topic extraction
+  - participant extraction
+  
+- do bot detection - things from bots don't go into conversations
+  they go into notification queues
+
 - figure out how to use redis to do conversation mapping
 - /recent_correspondents
-- /recent_conversations
-- /conversation/:id
-
 
 
 LATER:

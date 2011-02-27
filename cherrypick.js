@@ -66,8 +66,36 @@ function api(app) {
           redis.mget(message_list, function(err, response) {
             async.map(response, function(resp, callback) {
               callback(null, JSON.parse(resp))
-            }, function(err, results) {
-              callback(null, results);
+            }, function(err, messages) {
+              // from messages, create a conversation object
+              var convo = {};
+              var participants = [];
+              var participantMap = {};
+              var earliestDate = new Date(0);
+              for (var i =0; i < messages.length; i++) {
+                var message = messages[i];
+                var author = message['from'];
+                var email = author['email'];
+                if (!author['name']) author['name'] = email
+                var date = new Date(Date.parse(message['receivedDate']));
+                console.log("message.date = " + message['receivedDate'])
+                console.log(date.toUTCString());
+                if (date > earliestDate)
+                  earliestDate = date;
+                if (! (email in participantMap)) {
+                  participants.push(author);
+                }
+                participantMap[email] = true;
+              }
+              convo['topic'] = messages[0]['subject'];
+              convo['participants'] = participants;
+              convo['unreadCount'] = messages.length;
+              convo['totalCount'] = messages.length;
+              console.log("EARLIEST DATE: ", earliestDate.toUTCString());
+              convo['date'] = earliestDate.toUTCString();
+              convo['star'] = false; // XXX
+              convo['messages'] = messages;
+              callback(null, convo);
             });
           });
         }, function(err, convos) {

@@ -42,24 +42,32 @@ define(
     exports
   ) {
 
-var wy = new wmsy.WmsyDomain({id: "messages-simple",
-                              domain: "messages-simple",
+var wy = new wmsy.WmsyDomain({id: "treeaj",
+                              domain: "conversations",
                               clickToFocus: true});
 
 wy.defineStyleBase("messages", [
   ".message (@color: #000) {",
-  "  border-radius: 4px;",
-  "  margin: 2px;",
-  "  padding: 2px;",
-  "  background-color: @color;",
+    "color: #888;",
   "}",
 ]);
 
+function Conversation(participants, topic, unreadCount, totalCount, date, star, messages) {
+  this.participants = participants;
+  this.topic = topic;
+  this.unreadCount = unreadCount;
+  this.totalCount = totalCount;
+  this.date = date;
+  this.star = star;
+  this.messages = messages;
+};
+
 function Identity(aName, aEmail, aInAddressBook) {
-  this.name = aName;
+  console.log("*"+aName+"*")
+  this.name = aName || aEmail;
   this.email = aEmail;
   this.inAddressBook = aInAddressBook;
-}
+};
 
 function EmailMessage(aFrom, aTo, aSubject, aBody) {
   this.from = aFrom;
@@ -68,7 +76,6 @@ function EmailMessage(aFrom, aTo, aSubject, aBody) {
   this.body = aBody;
   console.log("created emailMessage");
   if (aBody.indexOf('<a') != -1) {
-    console.log("GOT an HTML Message!");
     this.bodyType = 'html';
   }
 }
@@ -76,15 +83,6 @@ EmailMessage.prototype = {
   messageType: "rfc822",
 };
 
-function Tweet(aFrom, aBody, aDirectedTo) {
-  this.from = aFrom;
-  this.to = [];
-  this.body = aBody;
-  this.directedTo = aDirectedTo;
-}
-Tweet.prototype = {
-  messageType: "tweet",
-};
 
 var idMap = {};
 
@@ -116,18 +114,120 @@ wy.defineWidget({
   style: {
     root: [
       "display: inline-block;",
-      "border-radius: 4px;",
-      "background-color: #ddd;",
-      "padding: 0px 2px;",
+      "color: #2EA4FF;",
+      "font-weight: bold;",
+      "padding-right: 5px;",
+      "margin-right: 5px;",
     ],
-    star: {
-      '[starred="true"]': [
-        "display: inline-block;",
-        "width: 12px !important;",
-        "height: 12px;",
-        "background-image: url(star.png);",
-      ]
+  }
+});
+
+hoverStyle = [
+  //"border-bottom: 1px solid #BFD5DE;",
+  //"border-top: 1px solid #BFD5DE;",
+  "z-index: 100;",
+  "position: relative;",
+  "background-image: -moz-linear-gradient(top, #EDF2F5 0%, #E6EDF0 100%);",
+  "background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #EDF2F5), color-stop(100%, #E6EDF0));",
+];
+
+wy.defineStyleBase("conversation", [
+".hbox() {",
+  "display: -webkit-box;",
+  "font-size: huge;",
+  "-webkit-box-orient: horizontal;",
+  "-webkit-box-align: stretch;",
+ 
+  "display: -moz-box;",
+  "-moz-box-orient: horizontal;",
+  "-moz-box-align: stretch;",
+ 
+  "display: box;",
+  "box-orient: horizontal;",
+  "box-align: stretch;",
+  "width: 100%;",
+  "}",
+ 
+".boxFlex() {",
+  "-webkit-box-flex: 1;",
+  "-moz-box-flex: 1;",
+  "box-flex: 1;",
+"}",
+
+".boxFlex0() {",
+"  -webkit-box-flex: 0;",
+"  -moz-box-flex: 0;",
+"  box-flex: 0;",
+"}"
+]);
+
+wy.defineWidget({
+  name: "conversation",
+  constraint: {
+    type: "conversation",
+  },
+  focus: wy.focus.item,
+  structure: {
+    headerBlock: wy.flow({
+      participants: wy.horizList({type: "identity"}, "participants"),
+      metaBlock: wy.flow({
+        unreadCount: wy.bind("unreadCount"),
+        date: wy.bind('date'),
+        //star: wy.bind('star'),  // HOW TO MAP BOOLEAN TO CHECKBOX?
+      }),
+    }),
+    topicBlock: wy.bind("topic"),
+  },
+  style: {
+    root: [
+      "background-color: #fff;",
+      "padding: 10px;",
+      "border-bottom: 1px solid #e6e6e6;",
+      "border-top: 1px solid #e6e6e6;",
+      "margin-top: -1px;",
+      "cursor: pointer;",
+      "color: #888;",
+      "background-image: -moz-linear-gradient(top, #fff 0%, #fafafa 100%);",
+      "background-image: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #fff), color-stop(100%, #fafafa));",
+    ],
+    ":hover": hoverStyle,
+    ":selected": hoverStyle,
+    headerBlock: [
+      ".hbox();",
+    ],
+    metaBlock: [
+      ".boxFlex0();",
+      "display: block;"
+    ],
+    participants: [
+      ".boxFlex();",
+      "display: block;"
+    ],
+    topic: [
+      "font-weight: bold;"
+    ],
+    unreadCount: [
+      "background-color: #888888;",
+      "border-radius: 2px 2px 2px 2px;",
+      "color: #FFFFFF;",
+      "font-weight: bold;",
+      "margin: 0 3px;",
+      "padding: 0 5px;",
+    ],
+    time: "margin: 0 5px 0 0;",
+  },
+  impl: {
+    
+    postInitUpdate: function() {
+      //console.log(this);
+      console.log(this.date_element.textContent);
+      this.date_element.textContent = $.prettyDate.format(new Date(Date.parse(this.date_element.textContent)));
     }
+  },
+  receive: {
+    focusChanged: function(aFocusedBinding, aFocusedDomain) {
+      alert('foo');
+    },
   }
 });
 
@@ -173,15 +273,11 @@ wy.defineWidget({
   },
   style: {
     root: [
-      "margin: 2px;",
-      "padding: 2px;",
-      "border-radius: 2px;",
       "background-color: #ffffff;",
       "white-space: pre-wrap;"
       ]
   },
 })
-
 
 /**
  * HTML-specialized body
@@ -213,77 +309,15 @@ wy.defineWidget({
   }
 });
 
-/**
- * Tweet-specialized display.
- */
-wy.defineWidget({
-  name: "message-tweet",
-  constraint: {
-    type: "message",
-    obj: {
-      messageType: "tweet"
-    }
-  },
-  focus: wy.focus.item,
-  structure: wy.flow({
-    author: wy.widget({type: "identity"}, "from"),
-    body: wy.bind("body"),
-  }),
-  style: {
-    root: ".message(#ad7fa8);",
-    body: "margin-left: 4px;",
-  }
-});
-
-wy.defineWidget({
-  name: "compose",
-  doc: "Verrrry simple composition widget",
-  constraint: {
-    type: "compose",
-  },
-  focus: wy.focus.container.horizontal("contents", "send"),
-  emit: ["addMessage"],
-  structure: {
-    contents: wy.text(wy.NONE, null, {placeholder: "Enter your message..."}),
-    send: wy.button("Send"),
-  },
-  events: {
-    root: {
-      command: function() {
-        // do not send empty messages
-        if (this.contents_element.value == "")
-          return;
-
-        this.emit_addMessage(new Tweet(userIdentity,
-                                       this.contents_element.value));
-        this.contents_element.value = "";
-      }
-    }
-  },
-  style: {
-    contents: [
-      "width: 40em;",
-    ],
-  }
-});
-
 wy.defineWidget({
   name: "root",
   doc: "Root display widget; everything hangs off this.",
-  focus: wy.focus.domain.vertical("messages", "compose"),
   constraint: {
     type: "root",
   },
   structure: {
-    messages: wy.vertList({type: "message"}, "messages"),
-    compose: wy.subWidget({type: "compose"}),
+    conversations: wy.vertList({type: "conversation"}, "conversations"),
   },
-  receive: {
-    addMessage: function(message) {
-      this.obj.messages.push(message);
-      this.update();
-    }
-  }
 });
 
 exports.main = function main(baseRelPath, doc) {
@@ -297,33 +331,28 @@ exports.main = function main(baseRelPath, doc) {
   var messages = [];
   
   $.ajax({
-    url: '/recent_messages/test@ascher.ca',
+    url: '/recent_convos/test@ascher.ca',
     dataType: 'json',
     success: function(data) {
       try {
-        console.log('data', data)
-        var count = 0;
-        for (var i=data.length-1; count < 10 && i > -1; i--) {
-          var msg = data[i];
-          console.log(msg);
+        var conversations = [];
+        for (var i=data.length-1; conversations.length < 10 && i > -1; i--) {
+          var blob = data[i];
           
-          var fromId = getId(msg['from']);
-          var tos = [];
-          for (var j = 0; j < msg['to'].length; j++) {
-            tos.push(getId(msg['to'][j]));
-          }
-          var subject = msg['subject'];
-          var body = msg['body'];
-          console.log("creating a new email message\n");
-          messages.push(new EmailMessage(fromId, tos, subject, body));
+          var convo = new Conversation(blob['participants'],
+                                       blob['topic'],
+                                       blob['unreadCount'],
+                                       blob['totalCount'],
+                                       blob['date'],
+                                       blob['star'],
+                                       blob['messages']);
+          conversations.push(convo);
         }
         var rootObj = {
-          messages: messages,
+          conversations: conversations,
         };
       
         emitter.emit({type: "root", obj: rootObj});
-        //console.log(data);
-        //$('#output').html(data);
       } catch (e) {
         console.log(e);
       }
